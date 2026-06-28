@@ -1,0 +1,21 @@
+{
+  "name": "julie-greene-functions",
+  "version": "1.0.0",
+  "private": true,
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "@sanity/client": "^6.29.1",
+    "firebase-functions": "^6.1.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

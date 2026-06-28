@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "lib": ["es2022"],
+    "module": "commonjs",
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "outDir": "lib",
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strict": true,
+    "target": "es2022"
+  },
+  "compileOnSave": true,
+  "include": ["src"]
+}
