@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import type { Variants } from "framer-motion";
-import { createClient } from "@sanity/client";
 import { httpsCallable } from "firebase/functions";
 import styled, { createGlobalStyle } from "styled-components";
 import { firebaseFunctions, trackEvent } from "./firebase";
@@ -181,299 +180,6 @@ type CMSData = {
   };
 };
 
-type DeepPartial<T> = {
-  [K in keyof T]?: T[K] extends Array<infer U>
-    ? DeepPartial<U>[]
-    : T[K] extends object
-    ? DeepPartial<T[K]>
-    : T[K];
-};
-
-const defaultCMSData: CMSData = {
-  imageUrls: {
-    logo:
-      "https://firebasestorage.googleapis.com/v0/b/ai-slideshow.firebasestorage.app/o/assets%2Fclients%2Fjulie-greene%2Fjulie-green-logo.png?alt=media",
-    portrait:
-      "https://firebasestorage.googleapis.com/v0/b/ai-slideshow.firebasestorage.app/o/assets%2Fclients%2Fjulie-greene%2Fjulie-greene-portrait.PNG?alt=media",
-    heroPoster:
-      "https://firebasestorage.googleapis.com/v0/b/ai-slideshow.firebasestorage.app/o/assets%2Fclients%2Fjulie-greene%2Fjulie-green-hero.png?alt=media",
-    griefBookWrap:
-      "https://firebasestorage.googleapis.com/v0/b/ai-slideshow.firebasestorage.app/o/assets%2Fclients%2Fjulie-greene%2Fintentionally-living-beyond-grief-wrap.png?alt=media",
-    herContinuumMockup:
-      "https://firebasestorage.googleapis.com/v0/b/ai-slideshow.firebasestorage.app/o/assets%2Fclients%2Fjulie-greene%2Fjulie-greene-her-continum-wrap.png?alt=media",
-    griefWorkbookCover:
-      "https://firebasestorage.googleapis.com/v0/b/ai-slideshow.firebasestorage.app/o/assets%2Fclients%2Fjulie-greene%2Fintentionally-living-beyond-grief-workbook-wrap.png?alt=media",
-    workbookSpread:
-      "https://firebasestorage.googleapis.com/v0/b/ai-slideshow.firebasestorage.app/o/assets%2Fclients%2Fjulie-greene%2Fjulie-green-intentially-living-poster-transparent.png?alt=media",
-    griefPromoTall:
-      "https://firebasestorage.googleapis.com/v0/b/ai-slideshow.firebasestorage.app/o/assets%2Fclients%2Fjulie-greene%2Fjulie-greene-leading-with-intelligence.png?alt=media",
-  },
-  navItems: [
-    { label: "Home", href: "#home" },
-    { label: "About", href: "#about" },
-    { label: "Speaking", href: "#speaking" },
-    { label: "Books", href: "#books" },
-    { label: "FAQ", href: "#faq" },
-    { label: "Contact", href: "#contact" },
-  ],
-  socialLinks: [
-    {
-      label: "Instagram",
-      href: "https://www.instagram.com/transformativehw",
-      icon: "instagram",
-    },
-    {
-      label: "TikTok",
-      href: "https://www.tiktok.com/@transformhw?_r=1&_t=ZP-97GbLkGy6Wd",
-      icon: "tiktok",
-    },
-    {
-      label: "Facebook",
-      href: "https://www.facebook.com/share/1CykcNBEuY/?mibextid=wwXIfr",
-      icon: "facebook",
-    },
-  ],
-  brand: {
-    name: "Julie J. Greene",
-    tagline: "Intentionally Living",
-    logoAlt: "Julie J. Greene logo",
-  },
-  hero: {
-    eyebrow: "Author • Speaker • EQ & Resilience Strategist",
-    titleLineOne: "Heal. Grow.",
-    titleLineTwo: "Live Intentionally.",
-    text: "Julie J. Greene creates books, guided journals, and healing experiences for people navigating grief, emotional growth, and life after loss.",
-    primaryCta: "Explore the Books",
-    primaryHref: "#books",
-    secondaryCta: "Meet Julie",
-    secondaryHref: "#about",
-    imageAlt: "Julie J. Greene book promotion",
-  },
-  statement: {
-    title: "Not just resilient. Transformational.",
-    text: "Reflections, healing, hope, and a journey back to you.",
-  },
-  about: {
-    eyebrow: "About Julie",
-    title: "Julie J. Greene, MSW, LCSW-C, EQPC",
-    portraitAlt: "Julie J. Greene portrait",
-    lead: "Julie J. Greene is an Author, Emotional Intelligence Practitioner, Mental Wellness and Resilience Strategist, Educator, and Founder & CEO of Transformative Healing & Wellness, LLC.",
-    paragraphs: [
-      "With more than three decades of experience in behavioral health, leadership development, higher education, and community wellness, she is passionate about helping individuals and organizations navigate life's challenges with purpose, resilience, and intention.",
-      "Through her writing, speaking engagements, workshops, and training programs, Julie empowers others to move beyond surviving and toward thriving by cultivating emotional wellness, resilience, and intentional living.",
-      "Whether speaking from a stage, facilitating a workshop, coaching professionals, or writing from her own lived experiences, Julie inspires others to reclaim their power, strengthen their resilience, and author lives filled with purpose, meaning, and possibility.",
-    ],
-    highlights: [
-      {
-        label: "Author Of",
-        text: "HerContinuum™, Intentionally Living Beyond Grief, and the Intentionally Living Beyond Grief Companion Workbook.",
-      },
-      {
-        label: "Education & Leadership",
-        text: "Adjunct Professor and Practicum Liaison at Morgan State University School of Social Work, helping prepare future social work professionals.",
-      },
-    ],
-    missionQuote:
-      "Life's most difficult experiences can become catalysts for transformation when we choose to heal, grow, and live intentionally.",
-    missionStatement:
-      "Julie’s mission is to help people move from surviving to thriving — one intentional choice at a time.",
-    signature: "Julie J. Greene",
-  },
-  speaking: {
-    eyebrow: "Speaking and Support",
-    title:
-      "Bring emotional intelligence, resilience, and intentional living to your audience.",
-    text: "Julie speaks to organizations, universities, conferences, faith communities, women’s groups, leadership teams, and wellness audiences seeking meaningful conversations about healing, emotional resilience, and transformation.",
-    imageAlt: "Julie J. Greene speaking and book promotion",
-    services: [
-      {
-        title: "Speaking & Keynotes",
-        description:
-          "Powerful talks on grief, resilience, emotional intelligence, intentional living, and healing-centered transformation.",
-      },
-      {
-        title: "EQ & Resilience Training",
-        description:
-          "Training experiences that help leaders, teams, and communities strengthen emotional intelligence and navigate challenges with clarity.",
-      },
-      {
-        title: "Guided Healing Workshops",
-        description:
-          "Reflective group experiences designed to support healing, growth, self-awareness, and purposeful forward movement.",
-      },
-    ],
-    ctaText:
-      "Invite Julie to speak, facilitate a workshop, or design a healing-centered experience for your organization.",
-    primaryCta: "Book Julie",
-    primaryHref: "#contact",
-    secondaryCta: "View Her Books",
-    secondaryHref: "#books",
-  },
-  booksSection: {
-    eyebrow: "Book Collection",
-    title: "Books and guided journals for grief support, healing, and intentional living.",
-    text: "Julie J. Greene’s books help readers honor loss, process grief, reflect with intention, and rediscover meaning after life changes, mother loss, relationships ending, career transitions, and other deeply personal forms of grief.",
-    books: [
-      {
-        title: "HerContinuum™",
-        subtitle: "A Reflection Journal for Motherless Daughters",
-        description:
-          "A guided reflection journal for motherless daughters learning to live with both love and loss. Through intentional prompts and space to remember, release, and reflect, HerContinuum™ helps readers honor a mother’s influence while recognizing the strength that continues within them.",
-        image:
-          "https://firebasestorage.googleapis.com/v0/b/ai-slideshow.firebasestorage.app/o/assets%2Fclients%2Fjulie-greene%2Fjulie-greene-her-continum-wrap.png?alt=media",
-        imageAlt:
-          "HerContinuum reflection journal for motherless daughters by Julie J. Greene",
-        badge: "Guided Journal",
-        cta: "View Journal",
-        href: "https://www.amazon.com/HerContinuumTM-Reflection-Journal-Motherless-Daughters/dp/B0GX9BZHB6?ref_=ast_author_dp&th=1&psc=1",
-      },
-      {
-        title: "Intentionally Living Beyond Grief",
-        subtitle: "365 Days of Healing, Becoming & Intentional Living",
-        description:
-          "A compassionate 365-day grief support guide for honoring loss, healing through reflection, and rising beyond grief with intention. This book supports readers navigating death, relationship loss, career loss, major transitions, and the realization that life has changed.",
-        image:
-          "https://firebasestorage.googleapis.com/v0/b/ai-slideshow.firebasestorage.app/o/assets%2Fclients%2Fjulie-greene%2Fintentionally-living-beyond-grief-wrap.png?alt=media",
-        imageAlt:
-          "Intentionally Living Beyond Grief 365 days of healing and intentional living book by Julie J. Greene",
-        badge: "Book",
-        cta: "Buy the Book",
-        href: "https://www.amazon.com/Intentionally-Living-Beyond-Grief-Intentional/dp/9696093861?ref_=ast_author_dp&th=1&psc=1",
-      },
-      {
-        title: "Intentionally Living Beyond Grief Companion Workbook",
-        subtitle:
-          "A Guided Journey Toward Healing, Growth, and Intentional Living",
-        description:
-          "A companion workbook with guided reflections, exercises, and healing-centered activities that help readers process grief, rediscover purpose, and move forward with clarity, resilience, and intentional living practices.",
-        image:
-          "https://firebasestorage.googleapis.com/v0/b/ai-slideshow.firebasestorage.app/o/assets%2Fclients%2Fjulie-greene%2Fintentionally-living-beyond-grief-workbook-wrap.png?alt=media",
-        imageAlt:
-          "Intentionally Living Beyond Grief Companion Workbook with guided grief reflection exercises by Julie J. Greene",
-        badge: "Companion Workbook",
-        cta: "View Workbook",
-        href: "#contact",
-      },
-    ],
-  },
-  testimonialsSection: {
-    eyebrow: "Testimonial",
-    title: "Words from readers and reviewers.",
-    text: "Julie’s writing and teaching create space for honest reflection, healing, and meaningful transformation.",
-    testimonials: [
-      {
-        quote:
-          "Julie’s work meets readers with compassion, honesty, and hope. Her words create space for grief while gently guiding people toward healing, resilience, and intentional living.",
-        name: "Editor Testimonial",
-        role: "Editorial Review",
-        featured: true,
-      },
-    ],
-  },
-  newsletter: {
-    title:
-      "Stay connected for book updates, events, reflections, and speaking opportunities.",
-    emailPlaceholder: "Email Address",
-    submitLabel: "Subscribe",
-  },
-  faq: {
-    eyebrow: "FAQ",
-    title: "Common questions about Julie’s books, speaking, and grief wellness work.",
-    text: "Quick answers for event planners, readers, organizations, and people looking for grief support resources.",
-    items: [
-      {
-        question: "Does Julie J. Greene speak at events?",
-        answer:
-          "Yes. Julie J. Greene speaks at conferences, universities, organizations, faith communities, women’s groups, wellness events, and leadership gatherings. Her speaking work focuses on grief, resilience, emotional wellness, emotional intelligence, healing, and intentional living.",
-      },
-      {
-        question: "What topics does Julie speak about?",
-        answer:
-          "Julie speaks about grief support, resilience, emotional intelligence, mental wellness, intentional living, healing after loss, leadership wellness, and transformation through difficult life experiences.",
-        ctaLabel: "View speaking topics",
-        ctaHref: "#speaking",
-      },
-      {
-        question: "What books has Julie J. Greene written?",
-        answer:
-          "Julie J. Greene is the author of HerContinuum™, Intentionally Living Beyond Grief, and the Intentionally Living Beyond Grief Companion Workbook. These resources support reflection, healing, grief processing, emotional growth, and intentional living.",
-        ctaLabel: "Explore the books",
-        ctaHref: "#books",
-      },
-      {
-        question: "Are Julie’s books for grief support?",
-        answer:
-          "Yes. Julie’s books and guided journals are designed for grief support, especially for readers navigating loss, identity shifts, healing, emotional wellness, and life after grief. They offer reflective prompts, compassionate language, and practical encouragement for moving forward with intention.",
-      },
-      {
-        question: "How do I request Julie for a workshop or keynote?",
-        answer:
-          "To request Julie J. Greene for a workshop, keynote, training, interview, or healing-centered event, use the contact form and select the reason that best matches your request. Include the event date, location, audience size, and goals for the session.",
-        ctaLabel: "Request Julie",
-        ctaHref: "#contact",
-      },
-    ],
-  },
-  contact: {
-    eyebrow: "Contact Julie",
-    title: "Start the conversation about books, speaking, or partnership.",
-    text: "Use the form to request a speaking engagement, ask about Julie’s books and workbooks, discuss bulk orders, or explore a healing-centered collaboration.",
-    email: "admin@transformhw.org",
-    reasons: [
-      { value: "", label: "Select a reason for contacting" },
-      { value: "speaking-keynote", label: "Book Speaking & Keynote" },
-      { value: "speaking-training", label: "Book EQ & Resilience Training" },
-      { value: "speaking-workshop", label: "Book Guided Healing Workshop" },
-      { value: "book-inquiry", label: "Book Inquiries" },
-      { value: "bulk-orders", label: "Bulk Book Orders" },
-      { value: "media-interview", label: "Media / Interview Request" },
-      { value: "partnership", label: "Partnership Request" },
-      { value: "other", label: "Other Request" },
-    ],
-    speakingReasonValues: [
-      "speaking-keynote",
-      "speaking-training",
-      "speaking-workshop",
-    ],
-    form: {
-      nameLabel: "Name *",
-      namePlaceholder: "Your name",
-      emailLabel: "Email *",
-      emailPlaceholder: "you@example.com",
-      phoneLabel: "Phone",
-      phonePlaceholder: "Optional",
-      organizationLabel: "Organization",
-      organizationPlaceholder: "School, company, church, group, etc.",
-      reasonLabel: "Reason for contacting *",
-      requestedDateLabel: "Requested date *",
-      alternateDateLabel: "Alternate date",
-      eventLocationLabel: "Event location *",
-      eventLocationPlaceholder: "City, state, or virtual",
-      audienceSizeLabel: "Expected audience size *",
-      audienceSizePlaceholder: "Approximate number",
-      messageLabel: "Message *",
-      messagePlaceholder: "Tell Julie what you are looking for...",
-      submitLabel: "Send Message",
-    },
-  },
-  footer: {
-    brandTagline: "Heal. Grow. Live Intentionally.",
-    exploreHeading: "Explore",
-    contactHeading: "Contact",
-    phone: "443.940.5550",
-    copyright: "© 2026 Julie J. Greene. All rights reserved.",
-    poweredByPrefix: "Powered by",
-    poweredByName: "The Handsomest Nerd",
-    poweredByHref: "https://www.instagram.com/thehandsomestnerdwebdeveloper",
-  },
-  ui: {
-    socialAriaLabel: "Social media links",
-    openMenuLabel: "Open menu",
-    closeMenuLabel: "Close menu",
-    mobileNavigationId: "mobile-navigation",
-  },
-};
-
 function SocialIcon({ icon }: { icon: SocialIconName }) {
   if (icon === "instagram") {
     return (
@@ -528,158 +234,43 @@ function SocialLinks({
   );
 }
 
-const sanityEnv =
-  (import.meta as unknown as {
-    env?: Record<string, string | undefined>;
-  }).env ?? {};
-
-const sanityProjectId = sanityEnv.VITE_SANITY_PROJECT_ID;
-const sanityDataset = sanityEnv.VITE_SANITY_DATASET;
-const sanityReadToken = sanityEnv.VITE_SANITY_READ_TOKEN;
-const sanityApiVersion = sanityEnv.VITE_SANITY_API_VERSION;
-
-const hasSanityReadConfig = () =>
-  Boolean(sanityProjectId && sanityDataset && sanityApiVersion);
-
-const sanityQuery = `*[_type in ["siteContent", "cmsData", "homepage", "homePage"]][0]{
-  ...,
-  imageUrls {
-    "logo": coalesce(logoUrl, logoImage.asset->url),
-    "portrait": coalesce(portraitUrl, portraitImage.asset->url),
-    "heroPoster": coalesce(heroPosterUrl, heroPosterImage.asset->url),
-    "griefBookWrap": coalesce(griefBookWrapUrl, griefBookWrapImage.asset->url),
-    "herContinuumMockup": coalesce(herContinuumMockupUrl, herContinuumMockupImage.asset->url),
-    "griefWorkbookCover": coalesce(griefWorkbookCoverUrl, griefWorkbookCoverImage.asset->url),
-    "workbookSpread": coalesce(workbookSpreadUrl, workbookSpreadImage.asset->url),
-    "griefPromoTall": coalesce(griefPromoTallUrl, griefPromoTallImage.asset->url)
-  },
-  booksSection {
-    ...,
-    books[] {
-      ...,
-      "image": coalesce(imageUrl, imageUpload.asset->url)
-    }
-  }
-}`;
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function hasUsableString(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0;
+function normalizeSanityContent(raw: unknown): CMSData {
+  const content = isRecord(raw) && isRecord(raw.content) ? raw.content : raw;
+
+  if (!isRecord(content)) {
+    throw new Error("Sanity returned no site content document");
+  }
+
+  return content as CMSData;
 }
 
-function mergeCMSData<T>(fallback: T, incoming: DeepPartial<T> | undefined): T {
-  if (incoming === undefined || incoming === null) {
-    return fallback;
-  }
-
-  if (typeof fallback === "string") {
-    return (hasUsableString(incoming) ? incoming : fallback) as T;
-  }
-
-  if (typeof fallback === "boolean") {
-    return (typeof incoming === "boolean" ? incoming : fallback) as T;
-  }
-
-  if (Array.isArray(fallback)) {
-    if (!Array.isArray(incoming) || incoming.length === 0) {
-      return fallback;
-    }
-
-    const maxLength = Math.max(fallback.length, incoming.length);
-
-    return Array.from({ length: maxLength })
-      .map((_, index) => {
-        const item = incoming[index];
-        const fallbackItem = fallback[index];
-
-        if (item === undefined || item === null) {
-          return fallbackItem;
-        }
-
-        if (fallbackItem === undefined) {
-          return item;
-        }
-
-        return mergeCMSData(fallbackItem, item);
-      })
-      .filter((item) => item !== undefined && item !== null) as T;
-  }
-
-  if (isRecord(fallback) && isRecord(incoming)) {
-    const fallbackRecord = fallback as Record<string, unknown>;
-    const incomingRecord = incoming as Record<string, unknown>;
-    const merged = { ...fallbackRecord };
-
-    Object.keys(fallbackRecord).forEach((key) => {
-      merged[key] = mergeCMSData(
-        fallbackRecord[key],
-        incomingRecord[key] as DeepPartial<unknown>
-      );
-    });
-
-    return merged as T;
-  }
-
-  return (incoming ?? fallback) as T;
-}
-
-function normalizeSanityContent(raw: unknown): DeepPartial<CMSData> {
-  if (!isRecord(raw)) {
-    return {};
-  }
-
-  if (isRecord(raw.content)) {
-    return raw.content as DeepPartial<CMSData>;
-  }
-
-  return raw as DeepPartial<CMSData>;
-}
-
-async function fetchCMSDataFromSanity(): Promise<DeepPartial<CMSData>> {
-  const projectId = sanityProjectId;
-  const dataset = sanityDataset;
-  const apiVersion = sanityApiVersion;
-
-  if (!projectId || !dataset || !apiVersion) {
-    return {};
-  }
-
-  const client = createClient({
-    projectId,
-    dataset,
-    apiVersion,
-    ...(sanityReadToken ? { token: sanityReadToken } : {}),
-    useCdn: !sanityReadToken,
-  });
-
-  const response = await client.fetch(sanityQuery);
-  return normalizeSanityContent(response);
+async function fetchCMSDataFromSanity(): Promise<CMSData> {
+  const getSiteContent = httpsCallable<undefined, unknown>(
+    firebaseFunctions,
+    "getSiteContent"
+  );
+  const response = await getSiteContent(undefined);
+  return normalizeSanityContent(response.data);
 }
 
 function useCMS() {
-  const [data, setData] = useState<CMSData>(defaultCMSData);
-  const [loading, setLoading] = useState(hasSanityReadConfig());
+  const [data, setData] = useState<CMSData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!hasSanityReadConfig()) {
-      setData(defaultCMSData);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
     setLoading(true);
 
     try {
       const sanityContent = await fetchCMSDataFromSanity();
-      setData(mergeCMSData(defaultCMSData, sanityContent));
+      setData(sanityContent);
       setError(null);
     } catch (cmsError) {
-      setData(defaultCMSData);
+      setData(null);
       setError(
         cmsError instanceof Error
           ? cmsError
@@ -770,18 +361,51 @@ const cardReveal: Variants = {
 
 export default function App() {
   const cms = useCMS();
-  const content = cms.data;
-  const imageUrls = content.imageUrls;
-  const navItems = content.navItems;
-  const socialLinks = content.socialLinks;
-  const mainTestimonial = content.testimonialsSection.testimonials[0];
-  const supportingTestimonials = content.testimonialsSection.testimonials.slice(1);
   const [email, setEmail] = useState("");
   const [contactReason, setContactReason] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [openFAQIndex, setOpenFAQIndex] = useState<number | null>(0);
   const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
   const [contactSubmitting, setContactSubmitting] = useState(false);
+  const [newsletterStatus, setNewsletterStatus] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [contactStatus, setContactStatus] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  if (cms.loading) {
+    return (
+      <MotionConfig reducedMotion="user">
+        <GlobalStyle />
+        <CMSStatus role="status">Loading site content…</CMSStatus>
+      </MotionConfig>
+    );
+  }
+
+  if (cms.error || !cms.data) {
+    return (
+      <MotionConfig reducedMotion="user">
+        <GlobalStyle />
+        <CMSStatus role="alert">
+          <p>Unable to load site content from Sanity.</p>
+          {cms.error && <small>{cms.error.message}</small>}
+          <button type="button" onClick={cms.refresh}>
+            Retry
+          </button>
+        </CMSStatus>
+      </MotionConfig>
+    );
+  }
+
+  const content = cms.data;
+  const imageUrls = content.imageUrls;
+  const navItems = content.navItems;
+  const socialLinks = content.socialLinks;
+  const mainTestimonial = content.testimonialsSection.testimonials[0];
+  const supportingTestimonials = content.testimonialsSection.testimonials.slice(1);
 
   const isSpeakingRequest =
     content.contact.speakingReasonValues.includes(contactReason);
@@ -794,6 +418,7 @@ export default function App() {
     }
 
     setNewsletterSubmitting(true);
+    setNewsletterStatus(null);
 
     try {
       const submitNewsletter = httpsCallable(firebaseFunctions, "submitNewsletter");
@@ -806,6 +431,18 @@ export default function App() {
         form_location: "newsletter",
       });
       setEmail("");
+      setNewsletterStatus({
+        type: "success",
+        message: "Thank you. You are signed up for updates.",
+      });
+    } catch (error) {
+      setNewsletterStatus({
+        type: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Something went wrong. Please try signing up again.",
+      });
     } finally {
       setNewsletterSubmitting(false);
     }
@@ -828,6 +465,7 @@ export default function App() {
     );
 
     setContactSubmitting(true);
+    setContactStatus(null);
 
     try {
       const submitContact = httpsCallable(firebaseFunctions, "submitContact");
@@ -844,6 +482,18 @@ export default function App() {
       });
       form.reset();
       setContactReason("");
+      setContactStatus({
+        type: "success",
+        message: "Thank you. Your message has been sent.",
+      });
+    } catch (error) {
+      setContactStatus({
+        type: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Something went wrong. Please try sending your message again.",
+      });
     } finally {
       setContactSubmitting(false);
     }
@@ -1103,16 +753,12 @@ export default function App() {
 
         <SpeakingCtaSection
           id="speaking"
-          initial="hidden"
-          whileInView="visible"
-          viewport={sectionViewport}
-          variants={fadeIn}
         >
           <SpeakingCtaGrid>
             <SpeakingIntro
               initial="hidden"
               whileInView="visible"
-              viewport={itemViewport}
+              viewport={tallContentViewport}
               variants={fadeUp}
             >
               <Eyebrow>{content.speaking.eyebrow}</Eyebrow>
@@ -1125,7 +771,7 @@ export default function App() {
             <SpeakingContentRow
               initial="hidden"
               whileInView="visible"
-              viewport={itemViewport}
+              viewport={tallContentViewport}
               variants={cardContainer}
             >
               <SpeakingImageWrap variants={slideInLeft}>
@@ -1148,7 +794,7 @@ export default function App() {
             <CtaCard
               initial="hidden"
               whileInView="visible"
-              viewport={itemViewport}
+              viewport={tallContentViewport}
               variants={fadeUp}
             >
               <CtaText>{content.speaking.ctaText}</CtaText>
@@ -1323,15 +969,34 @@ export default function App() {
               viewport={itemViewport}
               variants={slideInRight}
             >
+              <VisuallyHiddenLabel htmlFor="newsletter-email">
+                Email address
+              </VisuallyHiddenLabel>
               <Input
+                id="newsletter-email"
+                name="email"
                 type="email"
                 placeholder={content.newsletter.emailPlaceholder}
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setNewsletterStatus(null);
+                }}
+                aria-label="Email address"
+                required
               />
               <SubscribeButton type="submit" disabled={newsletterSubmitting}>
                 {content.newsletter.submitLabel}
               </SubscribeButton>
+              {newsletterStatus && (
+                <FormStatus
+                  role={newsletterStatus.type === "error" ? "alert" : "status"}
+                  aria-live="polite"
+                  $type={newsletterStatus.type}
+                >
+                  {newsletterStatus.message}
+                </FormStatus>
+              )}
             </NewsletterForm>
           </NewsletterInner>
         </Newsletter>
@@ -1450,6 +1115,7 @@ export default function App() {
                     id="name"
                     name="name"
                     placeholder={content.contact.form.namePlaceholder}
+                    onChange={() => setContactStatus(null)}
                     required
                   />
                 </Field>
@@ -1461,6 +1127,7 @@ export default function App() {
                     name="email"
                     type="email"
                     placeholder={content.contact.form.emailPlaceholder}
+                    onChange={() => setContactStatus(null)}
                     required
                   />
                 </Field>
@@ -1472,6 +1139,7 @@ export default function App() {
                     name="phone"
                     type="tel"
                     placeholder={content.contact.form.phonePlaceholder}
+                    onChange={() => setContactStatus(null)}
                   />
                 </Field>
 
@@ -1483,6 +1151,7 @@ export default function App() {
                     id="organization"
                     name="organization"
                     placeholder={content.contact.form.organizationPlaceholder}
+                    onChange={() => setContactStatus(null)}
                   />
                 </Field>
 
@@ -1494,7 +1163,10 @@ export default function App() {
                     id="reason"
                     name="reason"
                     value={contactReason}
-                    onChange={(e) => setContactReason(e.target.value)}
+                    onChange={(e) => {
+                      setContactReason(e.target.value);
+                      setContactStatus(null);
+                    }}
                     required
                   >
                     {content.contact.reasons.map((reason) => (
@@ -1515,6 +1187,7 @@ export default function App() {
                         id="requestedDate"
                         name="requestedDate"
                         type="date"
+                        onChange={() => setContactStatus(null)}
                         required
                       />
                     </Field>
@@ -1527,6 +1200,7 @@ export default function App() {
                         id="alternateDate"
                         name="alternateDate"
                         type="date"
+                        onChange={() => setContactStatus(null)}
                       />
                     </Field>
 
@@ -1538,6 +1212,7 @@ export default function App() {
                         id="eventLocation"
                         name="eventLocation"
                         placeholder={content.contact.form.eventLocationPlaceholder}
+                        onChange={() => setContactStatus(null)}
                         required
                       />
                     </Field>
@@ -1550,6 +1225,7 @@ export default function App() {
                         id="audienceSize"
                         name="audienceSize"
                         placeholder={content.contact.form.audienceSizePlaceholder}
+                        onChange={() => setContactStatus(null)}
                         required
                       />
                     </Field>
@@ -1564,6 +1240,7 @@ export default function App() {
                     id="message"
                     name="message"
                     placeholder={content.contact.form.messagePlaceholder}
+                    onChange={() => setContactStatus(null)}
                     required
                   />
                 </FullField>
@@ -1572,6 +1249,15 @@ export default function App() {
               <SubmitButton type="submit" disabled={contactSubmitting}>
                 {content.contact.form.submitLabel}
               </SubmitButton>
+              {contactStatus && (
+                <FormStatus
+                  role={contactStatus.type === "error" ? "alert" : "status"}
+                  aria-live="polite"
+                  $type={contactStatus.type}
+                >
+                  {contactStatus.message}
+                </FormStatus>
+              )}
             </ContactForm>
           </ContactGrid>
         </ContactSection>
@@ -1708,6 +1394,40 @@ const Page = styled.main`
       transparent 34rem
     ),
     linear-gradient(180deg, ${CREAM} 0%, #fffaf2 45%, #f8efe7 100%);
+`;
+
+const CMSStatus = styled.main`
+  min-height: 100vh;
+  padding: 32px;
+  display: grid;
+  place-content: center;
+  gap: 14px;
+  background: ${CREAM};
+  color: ${PURPLE};
+  text-align: center;
+  font-weight: 800;
+
+  p {
+    margin: 0;
+  }
+
+  small {
+    max-width: 620px;
+    color: ${MUTED};
+    font-weight: 600;
+  }
+
+  button {
+    width: fit-content;
+    justify-self: center;
+    border: 0;
+    border-radius: 999px;
+    padding: 12px 20px;
+    background: ${PURPLE};
+    color: ${WHITE};
+    cursor: pointer;
+    font-weight: 900;
+  }
 `;
 
 const Nav = styled.nav`
@@ -2110,6 +1830,18 @@ const SectionText = styled.p`
   color: ${MUTED};
   font-size: 1.05rem;
   line-height: 1.75;
+`;
+
+const VisuallyHiddenLabel = styled.label`
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 `;
 
 const BookGrid = styled(motion.div)`
@@ -2540,6 +2272,7 @@ const NewsletterTitle = styled(motion.h2)`
 
 const NewsletterForm = styled(motion.form)`
   display: flex;
+  flex-wrap: wrap;
   gap: 14px;
 
   @media (max-width: 600px) {
@@ -2573,6 +2306,26 @@ const SubscribeButton = styled.button`
     cursor: wait;
     opacity: 0.72;
   }
+`;
+
+const FormStatus = styled.div<{ $type: "success" | "error" }>`
+  width: 100%;
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: ${({ $type }) =>
+    $type === "success"
+      ? "rgba(54, 126, 82, 0.12)"
+      : "rgba(153, 45, 45, 0.12)"};
+  border: 1px solid
+    ${({ $type }) =>
+      $type === "success"
+        ? "rgba(54, 126, 82, 0.28)"
+        : "rgba(153, 45, 45, 0.28)"};
+  color: ${({ $type }) => ($type === "success" ? "#245f3c" : "#8f2929")};
+  font-size: 0.94rem;
+  font-weight: 800;
+  line-height: 1.45;
 `;
 
 const FAQSection = styled(motion.section)`

@@ -1,8 +1,28 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.submitContact = exports.submitNewsletter = void 0;
+exports.submitContact = exports.getSiteContent = exports.submitNewsletter = void 0;
 const client_1 = require("@sanity/client");
 const https_1 = require("firebase-functions/v2/https");
+const siteContentQuery = `*[_type in ["siteContent", "cmsData", "homepage", "homePage"]][0]{
+  ...,
+  imageUrls {
+    "logo": coalesce(logoUrl, logoImage.asset->url),
+    "portrait": coalesce(portraitUrl, portraitImage.asset->url),
+    "heroPoster": coalesce(heroPosterUrl, heroPosterImage.asset->url),
+    "griefBookWrap": coalesce(griefBookWrapUrl, griefBookWrapImage.asset->url),
+    "herContinuumMockup": coalesce(herContinuumMockupUrl, herContinuumMockupImage.asset->url),
+    "griefWorkbookCover": coalesce(griefWorkbookCoverUrl, griefWorkbookCoverImage.asset->url),
+    "workbookSpread": coalesce(workbookSpreadUrl, workbookSpreadImage.asset->url),
+    "griefPromoTall": coalesce(griefPromoTallUrl, griefPromoTallImage.asset->url)
+  },
+  booksSection {
+    ...,
+    books[] {
+      ...,
+      "image": coalesce(imageUrl, imageUpload.asset->url)
+    }
+  }
+}`;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const sanityProjectId = process.env.SANITY_PROJECT_ID || process.env.VITE_SANITY_PROJECT_ID;
 const sanityDataset = process.env.SANITY_DATASET || process.env.VITE_SANITY_DATASET;
@@ -57,6 +77,14 @@ exports.submitNewsletter = (0, https_1.onCall)(async (request) => {
         userAgent: request.rawRequest.get("user-agent") ?? null,
     });
     return { ok: true, id: doc._id };
+});
+exports.getSiteContent = (0, https_1.onCall)(async () => {
+    const client = getSanityClient();
+    const siteContent = await client.fetch(siteContentQuery);
+    if (!siteContent) {
+        throw new https_1.HttpsError("not-found", "No Sanity site content document found.");
+    }
+    return siteContent;
 });
 exports.submitContact = (0, https_1.onCall)(async (request) => {
     const payload = request.data;

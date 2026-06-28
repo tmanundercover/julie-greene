@@ -20,6 +20,27 @@ type NewsletterPayload = {
   source?: unknown;
 };
 
+const siteContentQuery = `*[_type in ["siteContent", "cmsData", "homepage", "homePage"]][0]{
+  ...,
+  imageUrls {
+    "logo": coalesce(logoUrl, logoImage.asset->url),
+    "portrait": coalesce(portraitUrl, portraitImage.asset->url),
+    "heroPoster": coalesce(heroPosterUrl, heroPosterImage.asset->url),
+    "griefBookWrap": coalesce(griefBookWrapUrl, griefBookWrapImage.asset->url),
+    "herContinuumMockup": coalesce(herContinuumMockupUrl, herContinuumMockupImage.asset->url),
+    "griefWorkbookCover": coalesce(griefWorkbookCoverUrl, griefWorkbookCoverImage.asset->url),
+    "workbookSpread": coalesce(workbookSpreadUrl, workbookSpreadImage.asset->url),
+    "griefPromoTall": coalesce(griefPromoTallUrl, griefPromoTallImage.asset->url)
+  },
+  booksSection {
+    ...,
+    books[] {
+      ...,
+      "image": coalesce(imageUrl, imageUpload.asset->url)
+    }
+  }
+}`;
+
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const sanityProjectId =
@@ -96,6 +117,17 @@ export const submitNewsletter = onCall(async (request) => {
   });
 
   return { ok: true, id: doc._id };
+});
+
+export const getSiteContent = onCall(async () => {
+  const client = getSanityClient();
+  const siteContent = await client.fetch(siteContentQuery);
+
+  if (!siteContent) {
+    throw new HttpsError("not-found", "No Sanity site content document found.");
+  }
+
+  return siteContent;
 });
 
 export const submitContact = onCall(async (request) => {
