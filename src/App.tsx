@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import type { Variants } from "framer-motion";
 import { createClient } from "@sanity/client";
 import { httpsCallable } from "firebase/functions";
 import styled, { createGlobalStyle } from "styled-components";
-import { firebaseFunctions } from "./firebase";
+import { firebaseFunctions, trackEvent } from "./firebase";
 
 type SocialIconName = "instagram" | "tiktok" | "facebook";
 
@@ -35,6 +35,7 @@ type Book = {
   subtitle: string;
   description: string;
   image: string;
+  imageAlt: string;
   badge: string;
   cta: string;
   href: string;
@@ -310,27 +311,31 @@ const defaultCMSData: CMSData = {
   },
   booksSection: {
     eyebrow: "Book Collection",
-    title: "Guided resources for grief, healing, and intentional living.",
-    text: "Julie’s work supports readers through loss, identity, emotional safety, reflection, and purposeful growth.",
+    title: "Books and guided journals for grief support, healing, and intentional living.",
+    text: "Julie J. Greene’s books help readers honor loss, process grief, reflect with intention, and rediscover meaning after life changes, mother loss, relationships ending, career transitions, and other deeply personal forms of grief.",
     books: [
       {
         title: "HerContinuum™",
-        subtitle: "A Journal for Motherless Daughters",
+        subtitle: "A Reflection Journal for Motherless Daughters",
         description:
-          "A gentle reflection journal created for the motherless daughter — the woman learning to live with love and loss in the same space.",
+          "A guided reflection journal for motherless daughters learning to live with both love and loss. Through intentional prompts and space to remember, release, and reflect, HerContinuum™ helps readers honor a mother’s influence while recognizing the strength that continues within them.",
         image:
           "https://firebasestorage.googleapis.com/v0/b/ai-slideshow.firebasestorage.app/o/assets%2Fclients%2Fjulie-greene%2Fjulie-greene-her-continum-wrap.png?alt=media",
+        imageAlt:
+          "HerContinuum reflection journal for motherless daughters by Julie J. Greene",
         badge: "Guided Journal",
         cta: "View Journal",
         href: "https://www.amazon.com/HerContinuumTM-Reflection-Journal-Motherless-Daughters/dp/B0GX9BZHB6?ref_=ast_author_dp&th=1&psc=1",
       },
       {
         title: "Intentionally Living Beyond Grief",
-        subtitle: "Reflections, Healing, and Hope",
+        subtitle: "365 Days of Healing, Becoming & Intentional Living",
         description:
-          "A compassionate companion for navigating grief with intention, courage, and hope. Created for readers moving through loss, transition, and the work of healing without losing themselves.",
+          "A compassionate 365-day grief support guide for honoring loss, healing through reflection, and rising beyond grief with intention. This book supports readers navigating death, relationship loss, career loss, major transitions, and the realization that life has changed.",
         image:
           "https://firebasestorage.googleapis.com/v0/b/ai-slideshow.firebasestorage.app/o/assets%2Fclients%2Fjulie-greene%2Fintentionally-living-beyond-grief-wrap.png?alt=media",
+        imageAlt:
+          "Intentionally Living Beyond Grief 365 days of healing and intentional living book by Julie J. Greene",
         badge: "Book",
         cta: "Buy the Book",
         href: "https://www.amazon.com/Intentionally-Living-Beyond-Grief-Intentional/dp/9696093861?ref_=ast_author_dp&th=1&psc=1",
@@ -340,9 +345,11 @@ const defaultCMSData: CMSData = {
         subtitle:
           "A Guided Journey Toward Healing, Growth, and Intentional Living",
         description:
-          "The companion workbook with guided reflections, exercises, and activities to help readers process grief, rediscover purpose, and move forward with clarity.",
+          "A companion workbook with guided reflections, exercises, and healing-centered activities that help readers process grief, rediscover purpose, and move forward with clarity, resilience, and intentional living practices.",
         image:
           "https://firebasestorage.googleapis.com/v0/b/ai-slideshow.firebasestorage.app/o/assets%2Fclients%2Fjulie-greene%2Fintentionally-living-beyond-grief-workbook-wrap.png?alt=media",
+        imageAlt:
+          "Intentionally Living Beyond Grief Companion Workbook with guided grief reflection exercises by Julie J. Greene",
         badge: "Companion Workbook",
         cta: "View Workbook",
         href: "#contact",
@@ -702,6 +709,12 @@ const itemViewport = {
   margin: "0px 0px -120px 0px",
 } as const;
 
+const tallContentViewport = {
+  once: true,
+  amount: 0.08,
+  margin: "0px 0px -80px 0px",
+} as const;
+
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 28 },
   visible: {
@@ -789,6 +802,9 @@ export default function App() {
         submittedAt: new Date().toISOString(),
         source: "newsletter",
       });
+      trackEvent("email_signup_submit", {
+        form_location: "newsletter",
+      });
       setEmail("");
     } finally {
       setNewsletterSubmitting(false);
@@ -820,6 +836,12 @@ export default function App() {
         submittedAt: new Date().toISOString(),
         source: "contact",
       });
+      trackEvent("contact_form_submit", {
+        reason:
+          typeof payload.reason === "string" && payload.reason
+            ? payload.reason
+            : "unspecified",
+      });
       form.reset();
       setContactReason("");
     } finally {
@@ -831,8 +853,24 @@ export default function App() {
     setMenuOpen(false);
   }
 
+  function trackBookJulieClick(location: string) {
+    trackEvent("book_julie_click", {
+      location,
+      cta_text: content.speaking.primaryCta,
+    });
+  }
+
+  function trackBookClick(book: Book, location: "image" | "cta") {
+    trackEvent("buy_book_click", {
+      book_title: book.title,
+      click_location: location,
+      cta_text: book.cta,
+      link_url: book.href,
+    });
+  }
+
   return (
-    <>
+    <MotionConfig reducedMotion="user">
       <GlobalStyle />
 
       <Page>
@@ -1116,7 +1154,10 @@ export default function App() {
               <CtaText>{content.speaking.ctaText}</CtaText>
 
               <ButtonRow>
-                <PrimaryButton href={content.speaking.primaryHref}>
+                <PrimaryButton
+                  href={content.speaking.primaryHref}
+                  onClick={() => trackBookJulieClick("speaking_cta")}
+                >
                   {content.speaking.primaryCta}
                 </PrimaryButton>
                 <SecondaryButton href={content.speaking.secondaryHref}>
@@ -1129,10 +1170,6 @@ export default function App() {
 
         <BookSection
           id="books"
-          initial="hidden"
-          whileInView="visible"
-          viewport={sectionViewport}
-          variants={fadeIn}
         >
           <CenteredHeader
             initial="hidden"
@@ -1148,7 +1185,7 @@ export default function App() {
           <BookGrid
             initial="hidden"
             whileInView="visible"
-            viewport={itemViewport}
+            viewport={tallContentViewport}
             variants={cardContainer}
           >
             {content.booksSection.books.map((book) => (
@@ -1163,6 +1200,7 @@ export default function App() {
                   target={book.href.startsWith("http") ? "_blank" : undefined}
                   rel={book.href.startsWith("http") ? "noreferrer" : undefined}
                   aria-label={`${book.cta}: ${book.title}`}
+                  onClick={() => trackBookClick(book, "image")}
                   variants={{
                     rest: { y: 0 },
                     hover: {
@@ -1173,7 +1211,7 @@ export default function App() {
                 >
                   <BookImage
                     src={book.image}
-                    alt={book.title}
+                    alt={book.imageAlt}
                     variants={{
                       rest: { scale: 1, rotate: 0 },
                       hover: {
@@ -1197,6 +1235,7 @@ export default function App() {
                     href={book.href}
                     target={book.href.startsWith("http") ? "_blank" : undefined}
                     rel={book.href.startsWith("http") ? "noreferrer" : undefined}
+                    onClick={() => trackBookClick(book, "cta")}
                   >
                     {book.cta}
                   </BookButton>
@@ -1588,7 +1627,7 @@ export default function App() {
           </Copyright>
         </Footer>
       </Page>
-    </>
+    </MotionConfig>
   );
 }
 
@@ -1621,6 +1660,15 @@ const GlobalStyle = createGlobalStyle`
     color: inherit;
   }
 
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 3px solid ${GOLD_LIGHT};
+    outline-offset: 4px;
+  }
+
   img {
     max-width: 100%;
     display: block;
@@ -1635,6 +1683,20 @@ const GlobalStyle = createGlobalStyle`
 
   section {
     scroll-margin-top: 96px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html, body, #root {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+    }
   }
 `;
 

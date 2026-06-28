@@ -218,6 +218,11 @@ export const siteContent = defineType({
                   type: "image",
                   description: "Used when no URL is provided.",
                 }),
+                defineField({
+                  name: "imageAlt",
+                  title: "Image Alt Text",
+                  type: "string",
+                }),
                 defineField({ name: "badge", title: "Badge", type: "string" }),
                 defineField({ name: "cta", title: "CTA Text", type: "string" }),
                 defineField({ name: "href", title: "CTA Link", type: "string" }),
