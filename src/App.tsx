@@ -386,7 +386,20 @@ export default function App() {
     return (
       <MotionConfig reducedMotion="user">
         <GlobalStyle />
-        <CMSStatus role="status">Loading site content…</CMSStatus>
+        <CMSStatus role="status" aria-live="polite">
+          <LoadingBrand>
+            <LoadingLogo
+              src="https://firebasestorage.googleapis.com/v0/b/ai-slideshow.firebasestorage.app/o/assets%2Fclients%2Fjulie-greene%2Fjulie-green-logo.png?alt=media"
+              alt=""
+            />
+            <LoadingBrandText>
+              <strong>Julie J. Greene</strong>
+              <span>Heal. Grow. Live Intentionally.</span>
+            </LoadingBrandText>
+          </LoadingBrand>
+          <LoadingSpinner aria-hidden="true" />
+          <LoadingMessage>Loading site content…</LoadingMessage>
+        </CMSStatus>
       </MotionConfig>
     );
   }
@@ -1419,7 +1432,7 @@ const CMSStatus = styled.main`
   padding: 32px;
   display: grid;
   place-content: center;
-  gap: 14px;
+  gap: 22px;
   background: ${CREAM};
   color: ${PURPLE};
   text-align: center;
@@ -1446,6 +1459,76 @@ const CMSStatus = styled.main`
     cursor: pointer;
     font-weight: 900;
   }
+`;
+
+const LoadingBrand = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+
+  @media (max-width: 520px) {
+    flex-direction: column;
+  }
+`;
+
+const LoadingLogo = styled.img`
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+`;
+
+const LoadingBrandText = styled.div`
+  display: grid;
+  text-align: left;
+
+  strong {
+    color: ${PURPLE};
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(1.75rem, 5vw, 2.45rem);
+    line-height: 1;
+  }
+
+  span {
+    color: ${GOLD};
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-weight: 900;
+    margin-top: 8px;
+  }
+
+  @media (max-width: 520px) {
+    text-align: center;
+  }
+`;
+
+const LoadingSpinner = styled.div`
+  width: 44px;
+  height: 44px;
+  justify-self: center;
+  border-radius: 50%;
+  border: 4px solid rgba(201, 154, 61, 0.22);
+  border-top-color: ${GOLD};
+  animation: spin 0.9s linear infinite;
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    border-top-color: rgba(201, 154, 61, 0.22);
+    border-left-color: ${GOLD};
+  }
+`;
+
+const LoadingMessage = styled.p`
+  margin: 0;
+  color: ${MUTED};
+  font-size: 0.95rem;
 `;
 
 const Nav = styled.nav`
