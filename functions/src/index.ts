@@ -20,6 +20,22 @@ type NewsletterPayload = {
   source?: unknown;
 };
 
+type EmailSettings = {
+  fromEmail?: string;
+  contactRecipientEmail?: string;
+  newsletterRecipientEmail?: string;
+  contactSubject?: string;
+  newsletterSubject?: string;
+};
+
+type ResendPayload = {
+  from: string;
+  to: string[];
+  subject: string;
+  html: string;
+  reply_to?: string[];
+};
+
 const siteContentQuery = `*[_type in ["siteContent", "cmsData", "homepage", "homePage"]][0]{
   ...,
   imageUrls {
@@ -41,7 +57,16 @@ const siteContentQuery = `*[_type in ["siteContent", "cmsData", "homepage", "hom
   }
 }`;
 
+const emailSettingsQuery = `*[_id == "emailSettings.singleton" && _type == "emailSettings"][0]{
+  fromEmail,
+  contactRecipientEmail,
+  newsletterRecipientEmail,
+  contactSubject,
+  newsletterSubject
+}`;
+
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const resendApiKey = process.env.RESEND_API_KEY;
 
 const sanityProjectId =
   process.env.SANITY_PROJECT_ID || process.env.VITE_SANITY_PROJECT_ID;
@@ -53,6 +78,17 @@ const sanityApiVersion =
   "2025-01-01";
 const sanityWriteToken =
   process.env.SANITY_WRITE_TOKEN || process.env.VITE_SANITY_READ_TOKEN;
+
+const reasonLabels: Record<string, string> = {
+  "speaking-keynote": "Book Speaking & Keynote",
+  "speaking-training": "Book EQ & Resilience Training",
+  "speaking-workshop": "Book Guided Healing Workshop",
+  "book-inquiry": "Book Inquiries",
+  "bulk-orders": "Bulk Book Orders",
+  "media-interview": "Media / Interview Request",
+  partnership: "Partnership Request",
+  other: "Other Request",
+};
 
 function getSanityClient() {
   if (!sanityProjectId || !sanityDataset || !sanityApiVersion) {
@@ -103,6 +139,133 @@ function requireEmail(value: unknown) {
   return email;
 }
 
+function getReasonLabel(value: string) {
+  return reasonLabels[value] ?? value;
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function fieldRow(label: string, value: string | null | undefined) {
+  const cleanValue = value?.trim();
+
+  if (!cleanValue) {
+    return "";
+  }
+
+  return `<p><strong>${escapeHtml(label)}:</strong> ${escapeHtml(cleanValue)}</p>`;
+}
+
+async function getEmailSettings(
+  client: ReturnType<typeof getSanityClient>
+): Promise<EmailSettings & { fromEmail: string }> {
+  const settings = await client.fetch<EmailSettings | null>(emailSettingsQuery);
+  const fromEmail = settings?.fromEmail;
+
+  if (!settings || !fromEmail) {
+    throw new Error("Email settings fromEmail is not configured in Sanity.");
+  }
+
+  return { ...settings, fromEmail };
+}
+
+async function sendResendEmail(payload: ResendPayload) {
+  if (!resendApiKey) {
+    throw new Error("RESEND_API_KEY is not configured.");
+  }
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${resendApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Resend email failed: ${response.status} ${body}`);
+  }
+}
+
+async function sendNewsletterNotification(
+  client: ReturnType<typeof getSanityClient>,
+  email: string
+) {
+  const settings = await getEmailSettings(client);
+  const to = settings.newsletterRecipientEmail || settings.contactRecipientEmail;
+
+  if (!to) {
+    throw new Error("Newsletter recipient email is not configured in Sanity.");
+  }
+
+  await sendResendEmail({
+    from: settings.fromEmail,
+    to: [to],
+    subject:
+      settings.newsletterSubject ||
+      "New Transformative Healing & Wellness newsletter signup",
+    html: [
+      "<h2>New newsletter signup</h2>",
+      fieldRow("Email", email),
+      fieldRow("Submitted", new Date().toISOString()),
+    ].join(""),
+  });
+}
+
+async function sendContactNotification(
+  client: ReturnType<typeof getSanityClient>,
+  contactSubmission: {
+    name: string;
+    email: string;
+    phone: string;
+    organization: string;
+    reason: string;
+    requestedDate: string;
+    alternateDate: string;
+    eventLocation: string;
+    audienceSize: string;
+    message: string;
+  }
+) {
+  const settings = await getEmailSettings(client);
+  const to = settings.contactRecipientEmail;
+
+  if (!to) {
+    throw new Error("Contact recipient email is not configured in Sanity.");
+  }
+
+  await sendResendEmail({
+    from: settings.fromEmail,
+    to: [to],
+    subject:
+      settings.contactSubject ||
+      "New Transformative Healing & Wellness contact form submission",
+    reply_to: [contactSubmission.email],
+    html: [
+      "<h2>New contact form submission</h2>",
+      fieldRow("Name", contactSubmission.name),
+      fieldRow("Email", contactSubmission.email),
+      fieldRow("Phone", contactSubmission.phone),
+      fieldRow("Organization", contactSubmission.organization),
+      fieldRow("Reason", getReasonLabel(contactSubmission.reason)),
+      fieldRow("Requested date", contactSubmission.requestedDate),
+      fieldRow("Alternate date", contactSubmission.alternateDate),
+      fieldRow("Event location", contactSubmission.eventLocation),
+      fieldRow("Audience size", contactSubmission.audienceSize),
+      fieldRow("Message", contactSubmission.message),
+      fieldRow("Submitted", new Date().toISOString()),
+    ].join(""),
+  });
+}
+
 export const submitNewsletter = onCall(async (request) => {
   const payload = request.data as NewsletterPayload;
   const email = requireEmail(payload.email);
@@ -116,7 +279,16 @@ export const submitNewsletter = onCall(async (request) => {
     userAgent: request.rawRequest.get("user-agent") ?? null,
   });
 
-  return { ok: true, id: doc._id };
+  let emailSent = true;
+
+  try {
+    await sendNewsletterNotification(client, email);
+  } catch (error) {
+    console.error("Newsletter notification email failed", error);
+    emailSent = false;
+  }
+
+  return { ok: true, id: doc._id, emailSent };
 });
 
 export const getSiteContent = onCall(async () => {
@@ -153,5 +325,14 @@ export const submitContact = onCall(async (request) => {
 
   const doc = await client.create(contactSubmission);
 
-  return { ok: true, id: doc._id };
+  let emailSent = true;
+
+  try {
+    await sendContactNotification(client, contactSubmission);
+  } catch (error) {
+    console.error("Contact notification email failed", error);
+    emailSent = false;
+  }
+
+  return { ok: true, id: doc._id, emailSent };
 });

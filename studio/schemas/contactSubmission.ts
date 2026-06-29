@@ -1,4 +1,5 @@
 import { defineField, defineType } from "sanity";
+import { getReasonLabel, ReasonInput } from "../components/ReasonInput";
 
 export const contactSubmission = defineType({
   name: "contactSubmission",
@@ -10,7 +11,14 @@ export const contactSubmission = defineType({
     defineField({ name: "email", title: "Email", type: "string" }),
     defineField({ name: "phone", title: "Phone", type: "string" }),
     defineField({ name: "organization", title: "Organization", type: "string" }),
-    defineField({ name: "reason", title: "Reason", type: "string" }),
+    defineField({
+      name: "reason",
+      title: "Reason",
+      type: "string",
+      components: {
+        input: ReasonInput,
+      },
+    }),
     defineField({ name: "requestedDate", title: "Requested Date", type: "string" }),
     defineField({ name: "alternateDate", title: "Alternate Date", type: "string" }),
     defineField({ name: "eventLocation", title: "Event Location", type: "string" }),
@@ -24,12 +32,15 @@ export const contactSubmission = defineType({
     select: {
       title: "name",
       subtitle: "email",
+      reason: "reason",
       createdAt: "createdAt",
     },
-    prepare({ title, subtitle, createdAt }) {
+    prepare({ title, subtitle, reason, createdAt }) {
       return {
         title: title || "Contact submission",
-        subtitle: [subtitle, createdAt].filter(Boolean).join(" • "),
+        subtitle: [subtitle, getReasonLabel(reason), createdAt]
+          .filter(Boolean)
+          .join(" • "),
       };
     },
   },

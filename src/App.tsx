@@ -64,6 +64,12 @@ type ContactReason = {
   label: string;
 };
 
+type SubmissionResponse = {
+  ok?: boolean;
+  id?: string;
+  emailSent?: boolean;
+};
+
 type CMSData = {
   imageUrls: ImageUrls;
   navItems: NavItem[];
@@ -421,8 +427,11 @@ export default function App() {
     setNewsletterStatus(null);
 
     try {
-      const submitNewsletter = httpsCallable(firebaseFunctions, "submitNewsletter");
-      await submitNewsletter({
+      const submitNewsletter = httpsCallable<unknown, SubmissionResponse>(
+        firebaseFunctions,
+        "submitNewsletter"
+      );
+      const result = await submitNewsletter({
         email: email.trim(),
         submittedAt: new Date().toISOString(),
         source: "newsletter",
@@ -432,8 +441,11 @@ export default function App() {
       });
       setEmail("");
       setNewsletterStatus({
-        type: "success",
-        message: "Thank you. You are signed up for updates.",
+        type: result.data.emailSent === false ? "error" : "success",
+        message:
+          result.data.emailSent === false
+            ? "You are signed up, but the notification email was not sent. Please contact admin@transformhw.org if needed."
+            : "Thank you. You are signed up for updates.",
       });
     } catch (error) {
       setNewsletterStatus({
@@ -468,8 +480,11 @@ export default function App() {
     setContactStatus(null);
 
     try {
-      const submitContact = httpsCallable(firebaseFunctions, "submitContact");
-      await submitContact({
+      const submitContact = httpsCallable<unknown, SubmissionResponse>(
+        firebaseFunctions,
+        "submitContact"
+      );
+      const result = await submitContact({
         ...payload,
         submittedAt: new Date().toISOString(),
         source: "contact",
@@ -483,8 +498,11 @@ export default function App() {
       form.reset();
       setContactReason("");
       setContactStatus({
-        type: "success",
-        message: "Thank you. Your message has been sent.",
+        type: result.data.emailSent === false ? "error" : "success",
+        message:
+          result.data.emailSent === false
+            ? "Your message was saved, but the notification email was not sent. Please email admin@transformhw.org directly if this is urgent."
+            : "Thank you. Your message has been sent.",
       });
     } catch (error) {
       setContactStatus({

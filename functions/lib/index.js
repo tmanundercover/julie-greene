@@ -23,13 +23,31 @@ const siteContentQuery = `*[_type in ["siteContent", "cmsData", "homepage", "hom
     }
   }
 }`;
+const emailSettingsQuery = `*[_id == "emailSettings.singleton" && _type == "emailSettings"][0]{
+  fromEmail,
+  contactRecipientEmail,
+  newsletterRecipientEmail,
+  contactSubject,
+  newsletterSubject
+}`;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const resendApiKey = process.env.RESEND_API_KEY;
 const sanityProjectId = process.env.SANITY_PROJECT_ID || process.env.VITE_SANITY_PROJECT_ID;
 const sanityDataset = process.env.SANITY_DATASET || process.env.VITE_SANITY_DATASET;
 const sanityApiVersion = process.env.SANITY_API_VERSION ||
     process.env.VITE_SANITY_API_VERSION ||
     "2025-01-01";
 const sanityWriteToken = process.env.SANITY_WRITE_TOKEN || process.env.VITE_SANITY_READ_TOKEN;
+const reasonLabels = {
+    "speaking-keynote": "Book Speaking & Keynote",
+    "speaking-training": "Book EQ & Resilience Training",
+    "speaking-workshop": "Book Guided Healing Workshop",
+    "book-inquiry": "Book Inquiries",
+    "bulk-orders": "Bulk Book Orders",
+    "media-interview": "Media / Interview Request",
+    partnership: "Partnership Request",
+    other: "Other Request",
+};
 function getSanityClient() {
     if (!sanityProjectId || !sanityDataset || !sanityApiVersion) {
         throw new https_1.HttpsError("failed-precondition", "Sanity is not configured.");
@@ -65,6 +83,95 @@ function requireEmail(value) {
     }
     return email;
 }
+function getReasonLabel(value) {
+    return reasonLabels[value] ?? value;
+}
+function escapeHtml(value) {
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+function fieldRow(label, value) {
+    const cleanValue = value?.trim();
+    if (!cleanValue) {
+        return "";
+    }
+    return `<p><strong>${escapeHtml(label)}:</strong> ${escapeHtml(cleanValue)}</p>`;
+}
+async function getEmailSettings(client) {
+    const settings = await client.fetch(emailSettingsQuery);
+    const fromEmail = settings?.fromEmail;
+    if (!settings || !fromEmail) {
+        throw new Error("Email settings fromEmail is not configured in Sanity.");
+    }
+    return { ...settings, fromEmail };
+}
+async function sendResendEmail(payload) {
+    if (!resendApiKey) {
+        throw new Error("RESEND_API_KEY is not configured.");
+    }
+    const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${resendApiKey}`,
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+        const body = await response.text();
+        throw new Error(`Resend email failed: ${response.status} ${body}`);
+    }
+}
+async function sendNewsletterNotification(client, email) {
+    const settings = await getEmailSettings(client);
+    const to = settings.newsletterRecipientEmail || settings.contactRecipientEmail;
+    if (!to) {
+        throw new Error("Newsletter recipient email is not configured in Sanity.");
+    }
+    await sendResendEmail({
+        from: settings.fromEmail,
+        to: [to],
+        subject: settings.newsletterSubject ||
+            "New Transformative Healing & Wellness newsletter signup",
+        html: [
+            "<h2>New newsletter signup</h2>",
+            fieldRow("Email", email),
+            fieldRow("Submitted", new Date().toISOString()),
+        ].join(""),
+    });
+}
+async function sendContactNotification(client, contactSubmission) {
+    const settings = await getEmailSettings(client);
+    const to = settings.contactRecipientEmail;
+    if (!to) {
+        throw new Error("Contact recipient email is not configured in Sanity.");
+    }
+    await sendResendEmail({
+        from: settings.fromEmail,
+        to: [to],
+        subject: settings.contactSubject ||
+            "New Transformative Healing & Wellness contact form submission",
+        reply_to: [contactSubmission.email],
+        html: [
+            "<h2>New contact form submission</h2>",
+            fieldRow("Name", contactSubmission.name),
+            fieldRow("Email", contactSubmission.email),
+            fieldRow("Phone", contactSubmission.phone),
+            fieldRow("Organization", contactSubmission.organization),
+            fieldRow("Reason", getReasonLabel(contactSubmission.reason)),
+            fieldRow("Requested date", contactSubmission.requestedDate),
+            fieldRow("Alternate date", contactSubmission.alternateDate),
+            fieldRow("Event location", contactSubmission.eventLocation),
+            fieldRow("Audience size", contactSubmission.audienceSize),
+            fieldRow("Message", contactSubmission.message),
+            fieldRow("Submitted", new Date().toISOString()),
+        ].join(""),
+    });
+}
 exports.submitNewsletter = (0, https_1.onCall)(async (request) => {
     const payload = request.data;
     const email = requireEmail(payload.email);
@@ -76,7 +183,15 @@ exports.submitNewsletter = (0, https_1.onCall)(async (request) => {
         createdAt: new Date().toISOString(),
         userAgent: request.rawRequest.get("user-agent") ?? null,
     });
-    return { ok: true, id: doc._id };
+    let emailSent = true;
+    try {
+        await sendNewsletterNotification(client, email);
+    }
+    catch (error) {
+        console.error("Newsletter notification email failed", error);
+        emailSent = false;
+    }
+    return { ok: true, id: doc._id, emailSent };
 });
 exports.getSiteContent = (0, https_1.onCall)(async () => {
     const client = getSanityClient();
@@ -106,6 +221,14 @@ exports.submitContact = (0, https_1.onCall)(async (request) => {
         userAgent: request.rawRequest.get("user-agent") ?? null,
     };
     const doc = await client.create(contactSubmission);
-    return { ok: true, id: doc._id };
+    let emailSent = true;
+    try {
+        await sendContactNotification(client, contactSubmission);
+    }
+    catch (error) {
+        console.error("Contact notification email failed", error);
+        emailSent = false;
+    }
+    return { ok: true, id: doc._id, emailSent };
 });
 //# sourceMappingURL=index.js.map
