@@ -162,6 +162,15 @@ function fieldRow(label: string, value: string | null | undefined) {
   return `<p><strong>${escapeHtml(label)}:</strong> ${escapeHtml(cleanValue)}</p>`;
 }
 
+function formatEasternDateTime(date = new Date()) {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "full",
+    timeStyle: "short",
+    timeZone: "America/New_York",
+    timeZoneName: "short",
+  }).format(date);
+}
+
 async function getEmailSettings(
   client: ReturnType<typeof getSanityClient>
 ): Promise<EmailSettings & { fromEmail: string }> {
@@ -215,7 +224,7 @@ async function sendNewsletterNotification(
     html: [
       "<h2>New newsletter signup</h2>",
       fieldRow("Email", email),
-      fieldRow("Submitted", new Date().toISOString()),
+      fieldRow("Submitted", formatEasternDateTime()),
     ].join(""),
   });
 }
@@ -261,7 +270,7 @@ async function sendContactNotification(
       fieldRow("Event location", contactSubmission.eventLocation),
       fieldRow("Audience size", contactSubmission.audienceSize),
       fieldRow("Message", contactSubmission.message),
-      fieldRow("Submitted", new Date().toISOString()),
+      fieldRow("Submitted", formatEasternDateTime()),
     ].join(""),
   });
 }
