@@ -54,6 +54,11 @@ const siteContentQuery = `*[_type in ["siteContent", "cmsData", "homepage", "hom
       ...,
       "image": coalesce(imageUrl, imageUpload.asset->url)
     }
+  },
+  "upcomingEvent": *[_id == "upcomingEvent.current" && _type == "upcomingEvent"][0] {
+    ...,
+    "eventImage": coalesce(eventImageImage.asset->url, eventImageUrl),
+    "eventQrCode": coalesce(eventQrCodeImage.asset->url, eventQrCodeUrl)
   }
 }`;
 
@@ -164,8 +169,12 @@ function fieldRow(label: string, value: string | null | undefined) {
 
 function formatEasternDateTime(date = new Date()) {
   return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "full",
-    timeStyle: "short",
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
     timeZone: "America/New_York",
     timeZoneName: "short",
   }).format(date);

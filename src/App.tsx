@@ -52,6 +52,21 @@ type Testimonial = {
   featured: boolean;
 };
 
+type UpcomingEvent = {
+  eventEnabled?: boolean;
+  eventTitle?: string;
+  eventEyebrow?: string;
+  eventDate?: string;
+  eventTime?: string;
+  eventLocation?: string;
+  eventDescription?: string;
+  eventImage?: string;
+  eventQrCode?: string;
+  eventbriteUrl?: string;
+  secondaryCtaLabel?: string;
+  secondaryCtaHref?: string;
+};
+
 type FAQItem = {
   question: string;
   answer: string;
@@ -94,6 +109,7 @@ type CMSData = {
     title: string;
     text: string;
   };
+  upcomingEvent?: UpcomingEvent;
   about: {
     eyebrow: string;
     title: string;
@@ -312,6 +328,12 @@ const tallContentViewport = {
   margin: "0px 0px -80px 0px",
 } as const;
 
+const defaultSpeakingReasonValues = [
+  "speaking-keynote",
+  "speaking-training",
+  "speaking-workshop",
+];
+
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 28 },
   visible: {
@@ -425,9 +447,20 @@ export default function App() {
   const socialLinks = content.socialLinks;
   const mainTestimonial = content.testimonialsSection.testimonials[0];
   const supportingTestimonials = content.testimonialsSection.testimonials.slice(1);
+  const upcomingEvent = content.upcomingEvent;
+  const showUpcomingEvent = Boolean(
+    upcomingEvent?.eventEnabled && upcomingEvent.eventTitle
+  );
+  const eventMeta = [
+    upcomingEvent?.eventDate,
+    upcomingEvent?.eventTime,
+    upcomingEvent?.eventLocation,
+  ].filter(Boolean);
 
-  const isSpeakingRequest =
-    content.contact.speakingReasonValues.includes(contactReason);
+  const speakingReasonValues = Array.isArray(content.contact.speakingReasonValues)
+    ? content.contact.speakingReasonValues
+    : defaultSpeakingReasonValues;
+  const isSpeakingRequest = speakingReasonValues.includes(contactReason);
 
   async function handleNewsletterSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -608,6 +641,22 @@ export default function App() {
           </MobileSocials>
         </MobileMenu>
 
+        {showUpcomingEvent && (
+          <EventTicker href="#upcoming-event" aria-label="Upcoming event announcement">
+            <EventTickerTrack>
+              {Array.from({ length: 4 }).map((_, index) => (
+                <EventTickerItem key={index} aria-hidden={index > 0}>
+                  <strong>
+                    {upcomingEvent?.eventEyebrow || "Upcoming Event"}
+                  </strong>
+                  <span>{upcomingEvent?.eventTitle}</span>
+                  {eventMeta.length > 0 && <em>{eventMeta.join(" • ")}</em>}
+                </EventTickerItem>
+              ))}
+            </EventTickerTrack>
+          </EventTicker>
+        )}
+
         <Hero
           id="home"
           initial="hidden"
@@ -658,6 +707,84 @@ export default function App() {
             <strong>{content.statement.title}</strong>
             <span>{content.statement.text}</span>
           </StatementInner>
+
+          {showUpcomingEvent && (
+            <EventFeature id="upcoming-event">
+              {upcomingEvent?.eventImage && (
+                <EventMedia>
+                  <EventImage
+                    src={upcomingEvent.eventImage}
+                    alt={`${upcomingEvent.eventTitle} event graphic`}
+                  />
+                </EventMedia>
+              )}
+
+              <EventDetails>
+                <EventEyebrow>
+                  {upcomingEvent?.eventEyebrow || "Upcoming Event"}
+                </EventEyebrow>
+                <EventTitle>{upcomingEvent?.eventTitle}</EventTitle>
+
+                {eventMeta.length > 0 && (
+                  <EventMeta>
+                    {upcomingEvent?.eventDate && (
+                      <span>{upcomingEvent.eventDate}</span>
+                    )}
+                    {upcomingEvent?.eventTime && (
+                      <span>{upcomingEvent.eventTime}</span>
+                    )}
+                    {upcomingEvent?.eventLocation && (
+                      <span>{upcomingEvent.eventLocation}</span>
+                    )}
+                  </EventMeta>
+                )}
+
+                {upcomingEvent?.eventDescription && (
+                  <EventDescription>
+                    {upcomingEvent.eventDescription}
+                  </EventDescription>
+                )}
+
+                <EventCtaArea>
+                  <EventButtonRow>
+                    {upcomingEvent?.eventbriteUrl && (
+                      <EventPrimaryButton
+                        href={upcomingEvent.eventbriteUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        RSVP on Eventbrite
+                      </EventPrimaryButton>
+                    )}
+                    {upcomingEvent?.secondaryCtaHref && (
+                      <EventSecondaryButton href={upcomingEvent.secondaryCtaHref}>
+                        {upcomingEvent.secondaryCtaLabel ||
+                          "Ask about this event"}
+                      </EventSecondaryButton>
+                    )}
+                  </EventButtonRow>
+
+                  {upcomingEvent?.eventQrCode && (
+                    <QrCard>
+                      {upcomingEvent?.eventbriteUrl && (
+                        <QrLink
+                          href={upcomingEvent.eventbriteUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Open RSVP page
+                        </QrLink>
+                      )}
+                      <QrImage
+                        src={upcomingEvent.eventQrCode}
+                        alt={`QR code for ${upcomingEvent.eventTitle}`}
+                      />
+                    </QrCard>
+                  )}
+                </EventCtaArea>
+              </EventDetails>
+            </EventFeature>
+          )}
         </StatementBar>
 
         <About
@@ -1870,12 +1997,75 @@ const HeroImage = styled.img`
   border-radius: 24px;
 `;
 
+const EventTicker = styled.a`
+  display: block;
+  overflow: hidden;
+  background: ${DEEP_PLUM};
+  color: ${WHITE};
+  border-top: 1px solid rgba(201, 154, 61, 0.42);
+  border-bottom: 1px solid rgba(201, 154, 61, 0.42);
+  text-decoration: none;
+`;
+
+const EventTickerTrack = styled.div`
+  display: flex;
+  width: max-content;
+  animation: eventTicker 34s linear infinite;
+
+  @keyframes eventTicker {
+    from {
+      transform: translateX(0);
+    }
+
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+`;
+
+const EventTickerItem = styled.div`
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 28px;
+  white-space: nowrap;
+  font-size: 0.84rem;
+  line-height: 1;
+
+  strong {
+    color: ${GOLD_LIGHT};
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+
+  span {
+    font-weight: 900;
+  }
+
+  em {
+    color: rgba(255, 255, 255, 0.74);
+    font-style: normal;
+  }
+
+  @media (max-width: 640px) {
+    gap: 10px;
+    padding-inline: 18px;
+    font-size: 0.78rem;
+  }
+`;
+
 const StatementBar = styled(motion.section)`
   background: ${PURPLE};
   color: ${WHITE};
   border-top: 3px solid ${GOLD};
   border-bottom: 3px solid ${GOLD};
-  padding: 28px 24px;
+  padding: 28px 24px 34px;
 `;
 
 const StatementInner = styled.div`
@@ -1894,6 +2084,163 @@ const StatementInner = styled.div`
   span {
     color: rgba(255, 255, 255, 0.82);
     font-size: 1rem;
+  }
+`;
+
+const EventFeature = styled.div`
+  max-width: 1080px;
+  margin: 34px auto 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  padding: 24px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.12),
+    rgba(201, 154, 61, 0.12)
+  );
+  border: 1px solid rgba(243, 216, 139, 0.42);
+  border-radius: 8px;
+  box-shadow: 0 24px 56px rgba(24, 9, 31, 0.32);
+
+  @media (max-width: 560px) {
+    padding: 18px;
+  }
+`;
+
+const EventDetails = styled.div`
+  display: grid;
+  align-content: center;
+`;
+
+const EventEyebrow = styled.div`
+  color: ${GOLD_LIGHT};
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+`;
+
+const EventTitle = styled.h2`
+  margin: 12px 0 0;
+  color: ${WHITE};
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2.35rem;
+  line-height: 1.06;
+
+  @media (max-width: 560px) {
+    font-size: 1.92rem;
+  }
+`;
+
+const EventMeta = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+
+  span {
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    border: 1px solid rgba(243, 216, 139, 0.38);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 0.88rem;
+    font-weight: 800;
+  }
+`;
+
+const EventDescription = styled.p`
+  max-width: 660px;
+  margin: 18px 0 0;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 1rem;
+  line-height: 1.7;
+`;
+
+const EventCtaArea = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 24px;
+
+  @media (max-width: 560px) {
+    align-items: flex-start;
+  }
+`;
+
+const EventButtonRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+`;
+
+const EventPrimaryButton = styled(PrimaryButton)`
+  min-height: 48px;
+  padding: 12px 22px;
+`;
+
+const EventSecondaryButton = styled(SecondaryButton)`
+  min-height: 48px;
+  padding: 12px 22px;
+  background: transparent;
+  color: ${WHITE};
+  border-color: rgba(243, 216, 139, 0.58);
+
+  &:hover {
+    border-color: ${GOLD_LIGHT};
+    background: rgba(255, 255, 255, 0.1);
+  }
+`;
+
+const EventMedia = styled.div`
+  min-width: 0;
+  display: grid;
+`;
+
+const EventImage = styled.img`
+  width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+  border-radius: 8px;
+`;
+
+const QrCard = styled.div`
+  margin-left: auto;
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.86);
+
+  @media (max-width: 560px) {
+    width: 100%;
+    margin-left: 0;
+    justify-items: start;
+  }
+`;
+
+const QrImage = styled.img`
+  width: 86px;
+  aspect-ratio: 1;
+  object-fit: contain;
+  border-radius: 6px;
+  border: 1px solid rgba(243, 216, 139, 0.5);
+`;
+
+const QrLink = styled.a`
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-decoration: none;
+  line-height: 1.2;
+
+  &:hover {
+    color: ${GOLD_LIGHT};
   }
 `;
 
